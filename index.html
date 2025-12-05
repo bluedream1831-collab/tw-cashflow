@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小資薪資精算管家 | WUCJ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; }
+        .locked input, .locked select { background-color: #e5e7eb; cursor: not-allowed; pointer-events: none; }
+        .tab-active { border-bottom: 3px solid #ea580c; color: #ea580c; font-weight: bold; } /* 橘色系 */
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .input-money { font-family: 'Courier New', Courier, monospace; font-weight: bold; }
+    </style>
+</head>
+<body class="text-gray-700 pb-24">
+
+<!-- 導航列 -->
+<nav class="bg-white shadow-md p-3 sticky top-0 z-50">
+    <div class="max-w-5xl mx-auto">
+        <!-- 上排：標題與年月選擇 -->
+        <div class="flex justify-between items-center mb-2">
+            <h1 class="text-lg md:text-xl font-bold text-gray-800 flex items-center">
+                <i class="fas fa-calculator mr-2 text-orange-600"></i> 薪資工時精算
+            </h1>
+            <div class="flex gap-2">
+                <input type="number" id="yearSelect" class="border rounded px-2 py-1 w-20 text-center font-bold focus:outline-none focus:ring-2 focus:ring-orange-300" value="2025" onchange="changeYear()">
+                <select id="monthSelect" class="border rounded px-2 py-1 font-bold bg-orange-50 text-orange-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-orange-300" onchange="changeMonth()">
+                    <!-- JS 生成 -->
+                </select>
+            </div>
+        </div>
+        
+        <!-- 下排：分頁與部落格導流 -->
+        <div class="flex justify-between items-end border-t pt-2">
+            <div class="flex space-x-2 md:space-x-6 text-sm md:text-base">
+                <button onclick="switchTab('calculator')" id="btn-tab-calc" class="tab-active pb-1 px-2 transition"><i class="fas fa-pen mr-1"></i>當月試算</button>
+                <button onclick="switchTab('report')" id="btn-tab-rep" class="pb-1 text-gray-500 hover:text-orange-500 px-2 transition"><i class="fas fa-chart-bar mr-1"></i>年度報表</button>
+            </div>
+            
+            <!-- 【已更新】部落格連結 (Header) -->
+            <a href="https://vocus.cc/salon/WUCJ" target="_blank" class="text-orange-600 hover:text-white hover:bg-orange-500 border border-orange-200 hover:border-orange-500 px-3 py-1 rounded-full text-xs md:text-sm font-bold flex items-center transition shadow-sm">
+                <i class="fas fa-rss mr-1"></i> WUCJ 沙龍
+            </a>
+        </div>
+    </div>
+</nav>
+
+<div class="max-w-5xl mx-auto p-3 md:p-6">
+
+    <!-- ================= 頁面 1: 當月試算 ================= -->
+    <div id="view-calculator">
+        
+        <!-- 頂部工具列 -->
+        <div class="flex flex-wrap gap-2 mb-4 justify-end items-center bg-white p-2 rounded shadow-sm">
+            <span class="text-xs text-gray-500 mr-auto font-mono" id="currentMonthLabel">載入中...</span>
+            <button onclick="copySettingsToAll()" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded text-xs transition border border-purple-200">
+                <i class="fas fa-clone mr-1"></i> 設定套用整年
+            </button>
+            <button onclick="toggleLock()" id="lockBtn" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded text-xs transition border border-gray-300">
+                <i class="fas fa-unlock mr-1"></i> 鎖定
+            </button>
+            <button onclick="clearCurrentMonth()" class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1 rounded text-xs transition border border-red-200">
+                <i class="fas fa-trash-alt mr-1"></i> 清空
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" id="inputArea">
+            
+            <!-- A區: 薪資結構 -->
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                <h3 class="font-bold text-gray-800 mb-3 flex items-center">
+                    💰 經常性薪資
+                    <span class="ml-2 text-[10px] text-white bg-blue-500 px-1.5 py-0.5 rounded-full">納入時薪計算</span>
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm font-medium">本俸 (底薪)</label>
+                        <input type="number" id="baseSalary" class="input-money border rounded p-1 w-28 text-right focus:ring-2 ring-blue-200 outline-none" placeholder="0" oninput="calculate()">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm text-gray-600">職務津貼</label>
+                        <input type="number" id="jobAllowance" class="input-money border rounded p-1 w-28 text-right focus:ring-2 ring-blue-200 outline-none" placeholder="0" oninput="calculate()">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm text-gray-600">伙食津貼</label>
+                        <input type="number" id="mealAllowance" class="input-money border rounded p-1 w-28 text-right focus:ring-2 ring-blue-200 outline-none" placeholder="0" oninput="calculate()">
+                    </div>
+                    <hr class="border-gray-100">
+                     <div class="flex justify-between items-center">
+                        <label class="text-sm text-gray-400">其他獎金(不計時薪)</label>
+                        <input type="number" id="bonus" class="input-money border rounded p-1 w-28 text-right focus:ring-2 ring-yellow-200 outline-none" placeholder="0" oninput="calculate()">
+                    </div>
+                    
+                    <!-- 時薪顯示區 -->
+                    <div class="bg-blue-50 p-2 rounded flex flex-col gap-1 mt-2 border border-blue-100">
+                        <div class="flex justify-between text-xs text-blue-800">
+                            <span>平日每小時工資額</span>
+                            <span>(本俸+職務+伙食) ÷ 240</span>
+                        </div>
+                        <div class="flex justify-between items-end">
+                            <span class="text-xs text-gray-500">加班費計算基準</span>
+                            <span id="hourlyRateDisplay" class="font-bold font-mono text-xl text-blue-700">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- B區: 扣款設定 -->
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-red-400">
+                <h3 class="font-bold text-gray-800 mb-3">💸 每月應扣項目</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm">勞保自付</label>
+                        <input type="number" id="deductLabor" class="input-money border rounded p-1 w-28 text-right text-red-600 focus:ring-2 ring-red-200 outline-none" placeholder="0" oninput="calculate()">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm">健保自付</label>
+                        <input type="number" id="deductHealth" class="input-money border rounded p-1 w-28 text-right text-red-600 focus:ring-2 ring-red-200 outline-none" placeholder="0" oninput="calculate()">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm">團險/福利金</label>
+                        <input type="number" id="deductOther" class="input-money border rounded p-1 w-28 text-right text-red-600 focus:ring-2 ring-red-200 outline-none" placeholder="0" oninput="calculate()">
+                    </div>
+                    <div class="mt-8 p-3 bg-red-50 rounded text-right border border-red-100">
+                        <div class="text-xs text-gray-500">扣款合計</div>
+                        <div id="displayDeductTotal" class="font-bold font-mono text-red-600 text-lg">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- C區: 加班紀錄 -->
+        <div class="bg-white p-4 rounded-lg shadow mb-32">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b">
+                <div>
+                    <h3 class="font-bold text-lg"><i class="fas fa-clock text-yellow-500 mr-2"></i>加班紀錄</h3>
+                </div>
+                <button onclick="addOvertimeRow()" class="bg-blue-600 text-white px-3 py-1.5 rounded-full text-sm hover:bg-blue-700 shadow flex items-center transition">
+                    <i class="fas fa-plus mr-1"></i> 新增
+                </button>
+            </div>
+
+            <!-- 工時監控儀表板 -->
+            <div class="flex gap-4 mb-4 text-xs md:text-sm">
+                <div class="bg-gray-100 px-3 py-1 rounded border border-gray-200">
+                    <span class="text-gray-500">法定加班工時 (上限46h)</span>
+                    <div class="font-bold text-gray-800" id="legalHoursDisplay">0h</div>
+                </div>
+                <div class="bg-orange-50 px-3 py-1 rounded border border-orange-200">
+                    <span class="text-orange-600">天災/免計工時</span>
+                    <div class="font-bold text-orange-700" id="exemptHoursDisplay">0h</div>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto min-h-[150px]">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-gray-600 uppercase text-xs">
+                        <tr>
+                            <th class="p-2 w-32">日期</th>
+                            <th class="p-2 min-w-[140px]">加班類型</th>
+                            <th class="p-2 w-20 text-center">時數</th>
+                            <th class="p-2 text-right">加班費</th>
+                            <th class="p-2 w-10"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="overtimeList">
+                        <!-- JS 生成 -->
+                    </tbody>
+                </table>
+                <div id="emptyState" class="text-center text-gray-400 py-8 hidden">
+                    點擊「新增」開始記錄加班
+                </div>
+            </div>
+        </div>
+
+        <!-- D區: 底部結算 Bar -->
+        <div class="fixed bottom-0 left-0 w-full bg-slate-800 text-white shadow-[0_-4px_10px_rgba(0,0,0,0.2)] z-40 pb-safe">
+            <div class="max-w-5xl mx-auto p-3 flex flex-row justify-between items-center">
+                <div class="flex flex-col">
+                    <span class="text-[10px] text-gray-400 uppercase tracking-wider">本月實領 (Net Pay)</span>
+                    <span class="text-2xl font-bold font-mono text-green-400" id="netPay">$0</span>
+                </div>
+                
+                <div class="flex gap-6 text-right">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-gray-400">加班費總計</span>
+                        <span class="text-base font-bold text-yellow-400" id="totalOtPay">$0</span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-[10px] text-gray-400">應發總額</span>
+                        <span class="text-base font-bold" id="totalGross">$0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= 頁面 2: 年度報表 ================= -->
+    <div id="view-report" class="hidden">
+        
+        <!-- 功能按鈕區：Excel + JSON 備份/還原 -->
+        <div class="flex flex-wrap justify-end gap-2 mb-4 bg-gray-100 p-2 rounded">
+             <button onclick="exportYearlyExcel()" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded shadow text-sm flex items-center transition">
+                <i class="fas fa-file-excel mr-2"></i> 匯出 Excel
+            </button>
+            <div class="w-px bg-gray-300 mx-1"></div>
+            <button onclick="exportJson()" class="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1.5 rounded shadow text-sm flex items-center transition">
+                <i class="fas fa-download mr-2"></i> 備份
+            </button>
+            <label class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded shadow text-sm cursor-pointer flex items-center transition">
+                <i class="fas fa-upload mr-2"></i> 還原
+                <input type="file" id="importFile" class="hidden" onchange="importData(this)">
+            </label>
+        </div>
+
+        <!-- 年度總覽卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded-lg shadow border-t-4 border-green-500">
+                <div class="text-sm text-gray-500">年度實領總額</div>
+                <div class="text-2xl font-bold font-mono mt-1 text-gray-800" id="yearNetTotal">$0</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-t-4 border-yellow-500">
+                <div class="text-sm text-gray-500">年度加班費</div>
+                <div class="text-2xl font-bold font-mono mt-1 text-gray-800" id="yearOtTotal">$0</div>
+            </div>
+            <div class="bg-white p-4 rounded-lg shadow border-t-4 border-blue-500">
+                <div class="text-sm text-gray-500">年度總加班時數</div>
+                <div class="text-2xl font-bold font-mono mt-1 text-gray-800" id="yearOtHours">0h</div>
+            </div>
+        </div>
+
+        <!-- 圖表 -->
+        <div class="bg-white p-4 rounded-lg shadow mb-6">
+            <h4 class="font-bold text-gray-700 mb-4"><i class="fas fa-chart-line mr-2"></i>薪資趨勢圖</h4>
+            <canvas id="yearlyChart" height="80"></canvas>
+        </div>
+        
+        <!-- 年度明細表 -->
+        <div class="bg-white rounded-lg shadow mb-8 overflow-hidden">
+            <h4 class="font-bold text-gray-700 p-4 border-b bg-gray-50"><i class="fas fa-list mr-2"></i>年度詳細數據</h4>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-100 text-gray-600">
+                        <tr>
+                            <th class="p-3 whitespace-nowrap">月份</th>
+                            <th class="p-3 text-right">固定薪資</th>
+                            <th class="p-3 text-right text-yellow-600">加班費</th>
+                            <th class="p-3 text-right text-red-500">扣款</th>
+                            <th class="p-3 text-right font-bold text-green-600">實領金額</th>
+                            <th class="p-3 text-center">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="yearlyTableBody">
+                        <!-- JS 生成 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 【已更新】部落格導流 (Footer Card) -->
+        <div class="mt-8 bg-gradient-to-r from-slate-700 to-slate-800 text-white p-5 rounded-xl shadow-lg flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <h4 class="font-bold text-lg flex items-center"><i class="fas fa-lightbulb text-yellow-400 mr-2"></i> 喜歡這個小工具嗎？</h4>
+                <p class="text-sm text-gray-300 mt-1">我在方格子 Vocus 分享更多關於小資理財、職場生存與被動收入的實用觀點。</p>
+            </div>
+            <a href="https://vocus.cc/salon/WUCJ" target="_blank" class="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-full shadow font-bold text-sm transition transform hover:scale-105 whitespace-nowrap flex items-center border-2 border-orange-400">
+                閱讀更多文章 <i class="fas fa-arrow-right ml-2"></i>
+            </a>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    // ================= 核心邏輯 =================
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth() + 1;
+    let isLocked = false;
+    const STORAGE_KEY = 'salary_pro_v2_wucj'; // 更新 Key 避免衝突
+    let appData = {};
+
+    window.onload = function() {
+        const select = document.getElementById('monthSelect');
+        for(let i=1; i<=12; i++) {
+            let opt = document.createElement('option');
+            opt.value = i;
+            opt.text = i + "月";
+            select.appendChild(opt);
+        }
+        document.getElementById('yearSelect').value = currentYear;
+        select.value = currentMonth;
+        loadAllData();
+        loadMonthUI();
+    };
+
+    function loadAllData() {
+        const json = localStorage.getItem(STORAGE_KEY);
+        appData = json ? JSON.parse(json) : {};
+    }
+
+    function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    }
+
+    function getMonthData(y, m) {
+        if (!appData[y]) appData[y] = {};
+        if (!appData[y][m]) {
+            appData[y][m] = {
+                base: '', jobAllowance: '', mealAllowance: '', bonus: '',
+                deductLabor: '', deductHealth: '', deductOther: '',
+                overtime: []
+            };
+        }
+        return appData[y][m];
+    }
+
+    // ================= 介面切換 =================
+    function changeYear() {
+        currentYear = document.getElementById('yearSelect').value;
+        loadMonthUI();
+    }
+    function changeMonth() {
+        currentMonth = parseInt(document.getElementById('monthSelect').value);
+        loadMonthUI();
+    }
+    function switchTab(tab) {
+        if (tab === 'calculator') {
+            document.getElementById('view-calculator').classList.remove('hidden');
+            document.getElementById('view-report').classList.add('hidden');
+            document.getElementById('btn-tab-calc').className = 'tab-active pb-1 px-2 transition';
+            document.getElementById('btn-tab-rep').className = 'pb-1 text-gray-500 hover:text-orange-500 px-2 transition';
+        } else {
+            document.getElementById('view-calculator').classList.add('hidden');
+            document.getElementById('view-report').classList.remove('hidden');
+            document.getElementById('btn-tab-calc').className = 'pb-1 text-gray-500 hover:text-orange-500 px-2 transition';
+            document.getElementById('btn-tab-rep').className = 'tab-active pb-1 px-2 transition';
+            updateYearlyReport();
+        }
+    }
+
+    function loadMonthUI() {
+        document.getElementById('currentMonthLabel').innerText = `編輯中: ${currentYear}年 ${currentMonth}月`;
+        const data = getMonthData(currentYear, currentMonth);
+        
+        // 載入數值
+        document.getElementById('baseSalary').value = data.base;
+        document.getElementById('jobAllowance').value = data.jobAllowance || ''; 
+        document.getElementById('mealAllowance').value = data.mealAllowance || '';
+        document.getElementById('bonus').value = data.bonus;
+        document.getElementById('deductLabor').value = data.deductLabor;
+        document.getElementById('deductHealth').value = data.deductHealth;
+        document.getElementById('deductOther').value = data.deductOther;
+        
+        renderOvertimeTable(data.overtime);
+        calculate(false);
+    }
+
+    // ================= 計算引擎 =================
+    function calculate(shouldSave = true) {
+        const base = parseFloat(document.getElementById('baseSalary').value) || 0;
+        const job = parseFloat(document.getElementById('jobAllowance').value) || 0;
+        const meal = parseFloat(document.getElementById('mealAllowance').value) || 0;
+        const bonus = parseFloat(document.getElementById('bonus').value) || 0;
+        
+        // 時薪計算
+        const regularWage = base + job + meal;
+        const hourlyRate = regularWage / 240;
+        document.getElementById('hourlyRateDisplay').innerText = Math.round(hourlyRate);
+
+        // 加班費
+        const data = getMonthData(currentYear, currentMonth);
+        let totalOtPay = 0;
+        let legalHours = 0;
+        let exemptHours = 0; 
+
+        data.overtime.forEach(item => {
+            const h = parseFloat(item.hours) || 0;
+            let pay = 0;
+            
+            if (item.type === 'disaster') {
+                exemptHours += h;
+                 pay = h * hourlyRate * 2; 
+            } else {
+                legalHours += h;
+                if (item.type === 'weekday') {
+                    if (h <= 2) pay = h * 1.34 * hourlyRate;
+                    else pay = (2 * 1.34 * hourlyRate) + ((h - 2) * 1.67 * hourlyRate);
+                } else if (item.type === 'restday') {
+                    if (h <= 2) pay = h * 1.34 * hourlyRate;
+                    else if (h <= 8) pay = (2 * 1.34 * hourlyRate) + ((h - 2) * 1.67 * hourlyRate);
+                    else pay = (2 * 1.34 * hourlyRate) + (6 * 1.67 * hourlyRate) + ((h - 8) * 2.67 * hourlyRate);
+                } else if (item.type === 'holiday') {
+                    pay = h * hourlyRate * 2;
+                }
+            }
+            item.pay = pay;
+            totalOtPay += pay;
+        });
+
+        // UI 更新
+        data.overtime.forEach((item, idx) => {
+            const el = document.getElementById(`ot-pay-${idx}`);
+            if(el) el.innerText = Math.round(item.pay);
+        });
+
+        const legalDiv = document.getElementById('legalHoursDisplay');
+        legalDiv.innerText = legalHours.toFixed(1) + 'h';
+        legalDiv.className = legalHours > 46 ? "font-bold text-red-600" : "font-bold text-green-600";
+        document.getElementById('exemptHoursDisplay').innerText = exemptHours.toFixed(1) + 'h';
+
+        const dLabor = parseFloat(document.getElementById('deductLabor').value) || 0;
+        const dHealth = parseFloat(document.getElementById('deductHealth').value) || 0;
+        const dOther = parseFloat(document.getElementById('deductOther').value) || 0;
+        const totalDeduct = dLabor + dHealth + dOther;
+        
+        document.getElementById('displayDeductTotal').innerText = totalDeduct.toLocaleString();
+
+        const totalGross = regularWage + bonus + totalOtPay;
+        const netPay = totalGross - totalDeduct;
+
+        document.getElementById('totalGross').innerText = '$' + Math.round(totalGross).toLocaleString();
+        document.getElementById('totalOtPay').innerText = '$' + Math.round(totalOtPay).toLocaleString();
+        document.getElementById('netPay').innerText = '$' + Math.round(netPay).toLocaleString();
+
+        if (shouldSave) {
+            data.base = document.getElementById('baseSalary').value;
+            data.jobAllowance = document.getElementById('jobAllowance').value;
+            data.mealAllowance = document.getElementById('mealAllowance').value;
+            data.bonus = document.getElementById('bonus').value;
+            data.deductLabor = document.getElementById('deductLabor').value;
+            data.deductHealth = document.getElementById('deductHealth').value;
+            data.deductOther = document.getElementById('deductOther').value;
+            saveData();
+        }
+    }
+
+    // ================= 加班表操作 =================
+    function renderOvertimeTable(list) {
+        const tbody = document.getElementById('overtimeList');
+        const emptyState = document.getElementById('emptyState');
+        tbody.innerHTML = '';
+        
+        if (!list || list.length === 0) {
+            emptyState.classList.remove('hidden');
+            return;
+        }
+        emptyState.classList.add('hidden');
+
+        list.forEach((item, index) => {
+            const tr = document.createElement('tr');
+            tr.className = "border-b hover:bg-gray-50 transition";
+            tr.innerHTML = `
+                <td class="p-2"><input type="date" value="${item.date}" onchange="updateOt(${index}, 'date', this.value)" class="border rounded px-2 py-1 w-full text-xs bg-white"></td>
+                <td class="p-2">
+                    <select onchange="updateOt(${index}, 'type', this.value)" class="border rounded px-2 py-1 w-full text-xs bg-white font-bold ${item.type === 'disaster' ? 'text-red-500' : 'text-gray-700'}">
+                        <option value="weekday" ${item.type === 'weekday' ? 'selected' : ''}>平日 (1.34/1.67)</option>
+                        <option value="restday" ${item.type === 'restday' ? 'selected' : ''}>休息日/週六</option>
+                        <option value="holiday" ${item.type === 'holiday' ? 'selected' : ''}>國定假日 (2倍)</option>
+                        <option value="disaster" ${item.type === 'disaster' ? 'selected' : ''}>⚠ 天災/颱風 (不計46h)</option>
+                    </select>
+                </td>
+                <td class="p-2"><input type="number" value="${item.hours}" oninput="updateOt(${index}, 'hours', this.value)" class="border rounded px-2 py-1 w-16 text-xs text-center font-bold" placeholder="0"></td>
+                <td class="p-2 text-right font-mono text-blue-600 font-bold" id="ot-pay-${index}">${Math.round(item.pay || 0)}</td>
+                <td class="p-2 text-center"><button onclick="removeOt(${index})" class="text-gray-400 hover:text-red-500"><i class="fas fa-times-circle"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        if (isLocked) {
+             tbody.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
+        }
+    }
+
+    function addOvertimeRow() {
+        if(isLocked) return;
+        const data = getMonthData(currentYear, currentMonth);
+        data.overtime.push({ date: '', type: 'weekday', hours: 0, pay: 0 });
+        renderOvertimeTable(data.overtime);
+        calculate();
+    }
+    function removeOt(index) {
+        if(isLocked) return;
+        const data = getMonthData(currentYear, currentMonth);
+        data.overtime.splice(index, 1);
+        renderOvertimeTable(data.overtime);
+        calculate();
+    }
+    function updateOt(index, field, val) {
+        const data = getMonthData(currentYear, currentMonth);
+        data.overtime[index][field] = val;
+        if(field === 'type') renderOvertimeTable(data.overtime);
+        calculate();
+    }
+
+    // ================= 功能操作 =================
+    function copySettingsToAll() {
+        if(!confirm(`確定要將 ${currentMonth} 月的「本俸、津貼、扣款」複製到整年嗎？`)) return;
+        const src = getMonthData(currentYear, currentMonth);
+        for(let i=1; i<=12; i++) {
+            if (i === currentMonth) continue;
+            let target = getMonthData(currentYear, i);
+            target.base = src.base;
+            target.jobAllowance = src.jobAllowance;
+            target.mealAllowance = src.mealAllowance;
+            target.deductLabor = src.deductLabor;
+            target.deductHealth = src.deductHealth;
+            target.deductOther = src.deductOther;
+        }
+        saveData();
+        alert("複製完成！");
+    }
+
+    function clearCurrentMonth() {
+        if(!confirm("確定清空本月資料？")) return;
+        const data = getMonthData(currentYear, currentMonth);
+        data.base = ''; data.jobAllowance = ''; data.mealAllowance = ''; data.bonus = '';
+        data.deductLabor = ''; data.deductHealth = ''; data.deductOther = '';
+        data.overtime = [];
+        saveData();
+        loadMonthUI();
+    }
+
+    function toggleLock() {
+        isLocked = !isLocked;
+        const btn = document.getElementById('lockBtn');
+        const inputArea = document.getElementById('inputArea');
+        const otList = document.getElementById('overtimeList');
+        
+        if(isLocked) {
+            btn.innerHTML = '<i class="fas fa-lock text-red-500 mr-1"></i> 解鎖';
+            inputArea.classList.add('locked');
+            otList.querySelectorAll('input, select, button').forEach(el => el.disabled = true);
+        } else {
+            btn.innerHTML = '<i class="fas fa-unlock mr-1"></i> 鎖定';
+            inputArea.classList.remove('locked');
+            otList.querySelectorAll('input, select, button').forEach(el => el.disabled = false);
+        }
+    }
+
+    // ================= 年度報表 / 圖表 / 匯出 =================
+    let chartInstance = null;
+    function updateYearlyReport() {
+        let labels = [];
+        let nets = [];
+        let ots = [];
+        let stats = [];
+        
+        let sumNet = 0; let sumOt = 0; let sumOtHours = 0;
+
+        for(let i=1; i<=12; i++) {
+            const d = appData[currentYear]?.[i];
+            const base = parseFloat(d?.base)||0;
+            const job = parseFloat(d?.jobAllowance)||0;
+            const meal = parseFloat(d?.mealAllowance)||0;
+            const bonus = parseFloat(d?.bonus)||0;
+            const ot = d?.overtime?.reduce((acc, c) => acc + (c.pay||0), 0) || 0;
+            const ded = (parseFloat(d?.deductLabor)||0) + (parseFloat(d?.deductHealth)||0) + (parseFloat(d?.deductOther)||0);
+            const net = base+job+meal+bonus+ot-ded;
+            const hours = d?.overtime?.reduce((acc, c) => acc + (parseFloat(c.hours)||0), 0) || 0;
+            
+            sumNet += net; sumOt += ot; sumOtHours += hours;
+            
+            labels.push(i + '月');
+            nets.push(net);
+            ots.push(ot);
+            
+            if (base+ot > 0) { // 有數據才顯示在表格
+                stats.push({ m: i, base: base+job+meal+bonus, ot: ot, ded: ded, net: net });
+            }
+        }
+
+        document.getElementById('yearNetTotal').innerText = "$" + Math.round(sumNet).toLocaleString();
+        document.getElementById('yearOtTotal').innerText = "$" + Math.round(sumOt).toLocaleString();
+        document.getElementById('yearOtHours').innerText = sumOtHours.toFixed(1) + "h";
+
+        // 更新圖表
+        const ctx = document.getElementById('yearlyChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: '實領金額', data: nets, backgroundColor: '#34d399', borderRadius: 4 },
+                    { label: '加班費', data: ots, type: 'line', borderColor: '#f59e0b', borderWidth: 2 }
+                ]
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true } } }
+        });
+        
+        // 更新年度明細表格
+        const tbody = document.getElementById('yearlyTableBody');
+        tbody.innerHTML = '';
+        if (stats.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-gray-400">目前沒有資料，請先至「當月試算」輸入。</td></tr>';
+        } else {
+            stats.forEach(s => {
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-gray-50";
+                tr.innerHTML = `
+                    <td class="p-3 text-center font-bold">${s.m}月</td>
+                    <td class="p-3 text-right text-gray-600">${s.base.toLocaleString()}</td>
+                    <td class="p-3 text-right text-yellow-600 font-medium">${s.ot > 0 ? s.ot.toLocaleString() : '-'}</td>
+                    <td class="p-3 text-right text-red-400">${s.ded > 0 ? '-' + s.ded.toLocaleString() : '-'}</td>
+                    <td class="p-3 text-right font-bold text-green-600">${s.net.toLocaleString()}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="jumpToMonth(${s.m})" class="text-blue-500 hover:text-blue-700 text-xs border border-blue-200 rounded px-2 py-1">編輯</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    }
+
+    function jumpToMonth(m) {
+        document.getElementById('monthSelect').value = m;
+        changeMonth();
+        switchTab('calculator');
+    }
+
+    // Excel 匯出
+    function exportYearlyExcel() {
+        const wb = XLSX.utils.book_new();
+        let wsData = [
+            ["年度薪資報表", currentYear + "年"],
+            ["月份", "本俸", "職務津貼", "伙食津貼", "其他獎金", "加班費", "加班時數", "扣款", "實領金額"]
+        ];
+
+        for(let i=1; i<=12; i++) {
+            const d = appData[currentYear]?.[i];
+            if(d) {
+                const base = parseFloat(d.base)||0;
+                const job = parseFloat(d.jobAllowance)||0;
+                const meal = parseFloat(d.mealAllowance)||0;
+                const bonus = parseFloat(d.bonus)||0;
+                const ot = d.overtime.reduce((acc, c) => acc + (c.pay||0), 0);
+                const ded = (parseFloat(d.deductLabor)||0) + (parseFloat(d.deductHealth)||0) + (parseFloat(d.deductOther)||0);
+                const net = base+job+meal+bonus+ot-ded;
+                const hours = d.overtime.reduce((acc, c) => acc + (parseFloat(c.hours)||0), 0);
+                wsData.push([i, base, job, meal, bonus, Math.round(ot), hours, ded, Math.round(net)]);
+            }
+        }
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        XLSX.utils.book_append_sheet(wb, ws, "年度總表");
+        XLSX.writeFile(wb, `Salary_Export_${currentYear}.xlsx`);
+    }
+
+    // JSON 備份
+    function exportJson() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", `Salary_Backup_${currentYear}_${new Date().toISOString().slice(0,10)}.json`);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    // JSON 還原
+    function importData(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const raw = JSON.parse(e.target.result);
+                // 簡單檢查格式
+                if (typeof raw === 'object') {
+                    appData = raw;
+                    saveData();
+                    alert("匯入成功！頁面將重新整理。");
+                    location.reload();
+                } else {
+                    alert("檔案格式不正確");
+                }
+            } catch (err) {
+                alert("檔案損毀或格式錯誤");
+            }
+        };
+        reader.readAsText(file);
+    }
+</script>
+</body>
+</html>
