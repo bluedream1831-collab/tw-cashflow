@@ -593,4 +593,77 @@
 
         for(let i=1; i<=12; i++) {
             const d = appData[currentYear]?.[i];
-            const base = parseFloat(d?.base)||0; const job
+            const base = parseFloat(d?.base)||0; const job = parseFloat(d?.jobAllowance)||0; const meal = parseFloat(d?.mealAllowance)||0;
+            const lBonus = parseFloat(d?.largeBonus)||0; const bonus = parseFloat(d?.bonus)||0; const passive = parseFloat(d?.passiveIncome)||0;
+            const ot = d?.overtime?.reduce((acc, c) => acc + (c.pay||0), 0) || 0;
+            const ded = (parseFloat(d?.deductLabor)||0) + (parseFloat(d?.deductHealth)||0) + (parseFloat(d?.deductPension)||0) + (parseFloat(d?.deductBonusTax)||0) + (parseFloat(d?.deductSavings)||0) + (parseFloat(d?.deductOther)||0);
+            
+            const net = base+job+meal+lBonus+bonus+passive+ot-ded;
+            const hours = d?.overtime?.reduce((acc, c) => acc + (parseFloat(c.hours)||0), 0) || 0;
+            
+            sumNet += net; sumOt += ot; sumOtHours += hours; sumPassive += passive;
+            labels.push(i + '月'); nets.push(net); ots.push(ot);
+            
+            if (base+ot+passive+lBonus > 0) { 
+                stats.push({ m: i, base: base+job+meal+bonus, lBonus: lBonus, passive: passive, ot: ot, ded: ded, net: net });
+            }
+        }
+        document.getElementById('yearNetTotal').innerText = "$" + Math.round(sumNet).toLocaleString();
+        document.getElementById('yearOtTotal').innerText = "$" + Math.round(sumOt).toLocaleString();
+        document.getElementById('yearPassiveTotal').innerText = "$" + Math.round(sumPassive).toLocaleString();
+        document.getElementById('yearOtHours').innerText = sumOtHours.toFixed(1) + "h";
+
+        const ctx = document.getElementById('yearlyChart').getContext('2d');
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: labels, datasets: [{ label: '實領總額', data: nets, backgroundColor: '#34d399', borderRadius: 4 }, { label: '加班費', data: ots, type: 'line', borderColor: '#f59e0b', borderWidth: 2 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+        
+        const tbody = document.getElementById('yearlyTableBody');
+        tbody.innerHTML = '';
+        if (stats.length === 0) tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-gray-400">目前沒有資料，請先至「當月試算」輸入。</td></tr>';
+        else stats.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td class="p-4 text-center font-bold">${s.m}月</td><td class="p-4 text-right text-gray-600">${s.base.toLocaleString()}</td><td class="p-4 text-right text-yellow-600">${s.lBonus > 0 ? s.lBonus.toLocaleString() : '-'}</td><td class="p-4 text-right text-purple-600">${s.passive > 0 ? s.passive.toLocaleString() : '-'}</td><td class="p-4 text-right text-yellow-600 font-medium">${s.ot > 0 ? s.ot.toLocaleString() : '-'}</td><td class="p-4 text-right text-red-400">${s.ded > 0 ? '-' + s.ded.toLocaleString() : '-'}</td><td class="p-4 text-right font-bold text-green-600">${s.net.toLocaleString()}</td><td class="p-4 text-center"><button onclick="jumpToMonth(${s.m})" class="text-blue-500 bg-blue-50 hover:bg-blue-100 rounded-lg px-3 py-1 text-xs font-bold transition">編輯</button></td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function jumpToMonth(m) { document.getElementById('monthSelect').value = m; changeMonth(); switchTab('calculator'); }
+    function exportYearlyExcel() {
+        const wb = XLSX.utils.book_new();
+        let wsData = [["年度薪資報表", currentYear + "年"], ["月份", "本俸", "職務津貼", "伙食津貼", "大額獎金", "其他獎金", "被動收入", "加班費", "加班時數", "勞退自付", "獎金扣稅", "福利儲蓄", "其他扣款", "實領金額"]];
+        for(let i=1; i<=12; i++) {
+            const d = appData[currentYear]?.[i];
+            if(d) {
+                const base = parseFloat(d.base)||0; const job = parseFloat(d.jobAllowance)||0; const meal = parseFloat(d.mealAllowance)||0;
+                const lBonus = parseFloat(d.largeBonus)||0; const bonus = parseFloat(d.bonus)||0; const passive = parseFloat(d.passiveIncome)||0;
+                const ot = d.overtime.reduce((acc, c) => acc + (c.pay||0), 0);
+                const dedPen = parseFloat(d.deductPension)||0; const dedTax = parseFloat(d.deductBonusTax)||0;
+                const dedSav = parseFloat(d.deductSavings)||0; const dedOth = (parseFloat(d.deductLabor)||0) + (parseFloat(d.deductHealth)||0) + (parseFloat(d.deductOther)||0);
+                const net = base+job+meal+lBonus+bonus+passive+ot-(dedPen+dedTax+dedSav+dedOth);
+                const hours = d.overtime.reduce((acc, c) => acc + (parseFloat(c.hours)||0), 0);
+                wsData.push([i, base, job, meal, lBonus, bonus, passive, Math.round(ot), hours, dedPen, dedTax, dedSav, dedOth, Math.round(net)]);
+            }
+        }
+        const ws = XLSX.utils.aoa_to_sheet(wsData); XLSX.utils.book_append_sheet(wb, ws, "年度總表"); XLSX.writeFile(wb, `Salary_Export_${currentYear}.xlsx`);
+    }
+
+    function exportJson() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+        const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", `Salary_Backup_${currentYear}.json`);
+        document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove();
+    }
+
+    function importData(input) {
+        const file = input.files[0]; if (!file) return;
+        const reader = new FileReader(); reader.onload = function(e) {
+            try { const raw = JSON.parse(e.target.result); if (typeof raw === 'object') { appData = raw; saveData(); alert("匯入成功！"); location.reload(); } else { alert("格式錯誤"); }
+            } catch (err) { alert("檔案損毀"); }
+        }; reader.readAsText(file);
+    }
+</script>
+</body>
+</html>
