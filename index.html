@@ -16,7 +16,7 @@
         .input-money { font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-weight: bold; }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
         #helpSection { transition: max-height 0.3s ease-out, opacity 0.3s ease-out; max-height: 0; opacity: 0; overflow: hidden; }
-        #helpSection.open { max-height: 2000px; opacity: 1; }
+        #helpSection.open { max-height: 2500px; opacity: 1; }
     </style>
 </head>
 <body class="text-gray-700 pb-32">
@@ -42,6 +42,7 @@
                 <button onclick="switchTab('calculator')" id="btn-tab-calc" class="flex-1 text-center py-2 text-sm font-bold tab-active transition active:bg-gray-50 rounded-t-lg"><i class="fas fa-pen mr-1"></i>當月試算</button>
                 <button onclick="switchTab('report')" id="btn-tab-rep" class="flex-1 text-center py-2 text-sm font-bold text-gray-500 transition active:bg-gray-50 rounded-t-lg"><i class="fas fa-chart-pie mr-1"></i>年度報表</button>
             </div>
+            
             <a href="https://vocus.cc/salon/WUCJ" target="_blank" class="ml-2 text-orange-600 border border-orange-200 bg-orange-50 px-3 py-1.5 rounded-full text-xs font-bold flex items-center shadow-sm active:scale-95 transition">
                 <i class="fas fa-rss"></i> <span class="hidden md:inline ml-1">WUCJ 沙龍</span>
             </a>
@@ -55,7 +56,7 @@
         
         <div class="flex gap-2 mb-4 overflow-x-auto pb-2 no-scrollbar">
             <button onclick="toggleHelp()" class="whitespace-nowrap bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-bold active:bg-blue-200 transition">
-                <i class="fas fa-book-open mr-1"></i> 欄位說明
+                <i class="fas fa-book-open mr-1"></i> 說明與教學
             </button>
             <button onclick="copySettingsToAll()" class="whitespace-nowrap bg-purple-100 text-purple-700 px-4 py-2 rounded-lg text-sm font-bold active:bg-purple-200 transition">
                 <i class="fas fa-clone mr-1"></i> 套用整年
@@ -68,13 +69,38 @@
             </button>
         </div>
 
+        <!-- 說明區塊 (含手機主畫面教學) -->
         <div id="helpSection" class="mb-4 bg-blue-50 rounded-xl border border-blue-200 shadow-inner">
             <div class="p-4 text-sm text-gray-700 space-y-4">
+                
+                <!-- 手機教學 -->
+                <div class="bg-white p-3 rounded-lg border border-blue-100">
+                    <h4 class="font-bold text-orange-600 flex items-center mb-2"><i class="fas fa-mobile-alt mr-2"></i> 像 App 一樣好用！加入手機主畫面</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        <div class="flex items-start">
+                            <i class="fab fa-apple text-lg mr-2 text-gray-500"></i>
+                            <div>
+                                <span class="font-bold">iOS (Safari)：</span><br>
+                                點擊下方 <i class="fas fa-share-square"></i> 分享按鈕 → 滑動選擇「加入主畫面」。
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <i class="fab fa-android text-lg mr-2 text-green-600"></i>
+                            <div>
+                                <span class="font-bold">Android (Chrome)：</span><br>
+                                點擊右上角 <i class="fas fa-ellipsis-v"></i> 選單 → 選擇「加到主畫面」或「安裝應用程式」。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-blue-200">
+
                 <div>
                     <h4 class="font-bold text-blue-700 flex items-center"><i class="fas fa-info-circle mr-2"></i>關於時薪計算</h4>
                     <p class="mt-1">勞基法規定，加班費計算基準為「平日每小時工資額」。公式為：<br><span class="font-mono bg-white px-1 rounded">(本俸 + 職務津貼 + 伙食津貼) ÷ 240</span>。</p>
                 </div>
-                <hr class="border-blue-200">
+                
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <h4 class="font-bold text-gray-800">💰 收入項目定義</h4>
@@ -93,7 +119,7 @@
                         </ul>
                     </div>
                 </div>
-                <div class="bg-white p-2 rounded border border-blue-100 mt-2">
+                <div class="bg-orange-50 p-2 rounded border border-orange-100 mt-2">
                     <h4 class="font-bold text-orange-600 text-xs">⚠ 特殊工時：天災/颱風</h4>
                     <p class="text-xs mt-1">若颱風天出勤，通常不計入每月46小時加班上限。建議選擇「天災/颱風」類型，系統會將時數獨立統計。</p>
                 </div>
@@ -103,6 +129,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" id="inputArea">
             
+            <!-- A區: 收入設定 -->
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                 <h3 class="font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
                     <span class="bg-blue-100 text-blue-600 p-1.5 rounded-md mr-2"><i class="fas fa-wallet"></i></span>
@@ -167,7 +194,6 @@
                         <label class="text-sm font-medium text-gray-600">健保自付</label>
                         <input type="number" id="deductHealth" inputmode="decimal" class="input-money border border-gray-300 rounded-lg p-2 w-32 text-right text-red-600 text-lg focus:ring-2 ring-red-300 outline-none" placeholder="0" oninput="calculate()">
                     </div>
-                    <!-- ✨ 文字已更新：自提範圍 -->
                     <div class="flex justify-between items-center">
                         <label class="text-sm font-medium text-gray-600">勞退自付 (自提)</label>
                         <input type="number" id="deductPension" inputmode="decimal" class="input-money border border-gray-300 rounded-lg p-2 w-32 text-right text-red-600 text-lg focus:ring-2 ring-red-300 outline-none" placeholder="0" oninput="calculate()">
@@ -342,7 +368,7 @@
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth() + 1;
     let isLocked = false;
-    const STORAGE_KEY = 'salary_pro_v6_bonus'; 
+    const STORAGE_KEY = 'salary_pro_v7_help'; 
     let appData = {};
 
     window.onload = function() {
@@ -567,77 +593,4 @@
 
         for(let i=1; i<=12; i++) {
             const d = appData[currentYear]?.[i];
-            const base = parseFloat(d?.base)||0; const job = parseFloat(d?.jobAllowance)||0; const meal = parseFloat(d?.mealAllowance)||0;
-            const lBonus = parseFloat(d?.largeBonus)||0; const bonus = parseFloat(d?.bonus)||0; const passive = parseFloat(d?.passiveIncome)||0;
-            const ot = d?.overtime?.reduce((acc, c) => acc + (c.pay||0), 0) || 0;
-            const ded = (parseFloat(d?.deductLabor)||0) + (parseFloat(d?.deductHealth)||0) + (parseFloat(d?.deductPension)||0) + (parseFloat(d?.deductBonusTax)||0) + (parseFloat(d?.deductSavings)||0) + (parseFloat(d?.deductOther)||0);
-            
-            const net = base+job+meal+lBonus+bonus+passive+ot-ded;
-            const hours = d?.overtime?.reduce((acc, c) => acc + (parseFloat(c.hours)||0), 0) || 0;
-            
-            sumNet += net; sumOt += ot; sumOtHours += hours; sumPassive += passive;
-            labels.push(i + '月'); nets.push(net); ots.push(ot);
-            
-            if (base+ot+passive+lBonus > 0) { 
-                stats.push({ m: i, base: base+job+meal+bonus, lBonus: lBonus, passive: passive, ot: ot, ded: ded, net: net });
-            }
-        }
-        document.getElementById('yearNetTotal').innerText = "$" + Math.round(sumNet).toLocaleString();
-        document.getElementById('yearOtTotal').innerText = "$" + Math.round(sumOt).toLocaleString();
-        document.getElementById('yearPassiveTotal').innerText = "$" + Math.round(sumPassive).toLocaleString();
-        document.getElementById('yearOtHours').innerText = sumOtHours.toFixed(1) + "h";
-
-        const ctx = document.getElementById('yearlyChart').getContext('2d');
-        if (chartInstance) chartInstance.destroy();
-        chartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: { labels: labels, datasets: [{ label: '實領總額', data: nets, backgroundColor: '#34d399', borderRadius: 4 }, { label: '加班費', data: ots, type: 'line', borderColor: '#f59e0b', borderWidth: 2 }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
-        });
-        
-        const tbody = document.getElementById('yearlyTableBody');
-        tbody.innerHTML = '';
-        if (stats.length === 0) tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-gray-400">目前沒有資料，請先至「當月試算」輸入。</td></tr>';
-        else stats.forEach(s => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td class="p-4 text-center font-bold">${s.m}月</td><td class="p-4 text-right text-gray-600">${s.base.toLocaleString()}</td><td class="p-4 text-right text-yellow-600">${s.lBonus > 0 ? s.lBonus.toLocaleString() : '-'}</td><td class="p-4 text-right text-purple-600">${s.passive > 0 ? s.passive.toLocaleString() : '-'}</td><td class="p-4 text-right text-yellow-600 font-medium">${s.ot > 0 ? s.ot.toLocaleString() : '-'}</td><td class="p-4 text-right text-red-400">${s.ded > 0 ? '-' + s.ded.toLocaleString() : '-'}</td><td class="p-4 text-right font-bold text-green-600">${s.net.toLocaleString()}</td><td class="p-4 text-center"><button onclick="jumpToMonth(${s.m})" class="text-blue-500 bg-blue-50 hover:bg-blue-100 rounded-lg px-3 py-1 text-xs font-bold transition">編輯</button></td>`;
-            tbody.appendChild(tr);
-        });
-    }
-
-    function jumpToMonth(m) { document.getElementById('monthSelect').value = m; changeMonth(); switchTab('calculator'); }
-    function exportYearlyExcel() {
-        const wb = XLSX.utils.book_new();
-        let wsData = [["年度薪資報表", currentYear + "年"], ["月份", "本俸", "職務津貼", "伙食津貼", "大額獎金", "其他獎金", "被動收入", "加班費", "加班時數", "勞退自付", "獎金扣稅", "福利儲蓄", "其他扣款", "實領金額"]];
-        for(let i=1; i<=12; i++) {
-            const d = appData[currentYear]?.[i];
-            if(d) {
-                const base = parseFloat(d.base)||0; const job = parseFloat(d.jobAllowance)||0; const meal = parseFloat(d.mealAllowance)||0;
-                const lBonus = parseFloat(d.largeBonus)||0; const bonus = parseFloat(d.bonus)||0; const passive = parseFloat(d.passiveIncome)||0;
-                const ot = d.overtime.reduce((acc, c) => acc + (c.pay||0), 0);
-                const dedPen = parseFloat(d.deductPension)||0; const dedTax = parseFloat(d.deductBonusTax)||0;
-                const dedSav = parseFloat(d.deductSavings)||0; const dedOth = (parseFloat(d.deductLabor)||0) + (parseFloat(d.deductHealth)||0) + (parseFloat(d.deductOther)||0);
-                const net = base+job+meal+lBonus+bonus+passive+ot-(dedPen+dedTax+dedSav+dedOth);
-                const hours = d.overtime.reduce((acc, c) => acc + (parseFloat(c.hours)||0), 0);
-                wsData.push([i, base, job, meal, lBonus, bonus, passive, Math.round(ot), hours, dedPen, dedTax, dedSav, dedOth, Math.round(net)]);
-            }
-        }
-        const ws = XLSX.utils.aoa_to_sheet(wsData); XLSX.utils.book_append_sheet(wb, ws, "年度總表"); XLSX.writeFile(wb, `Salary_Export_${currentYear}.xlsx`);
-    }
-
-    function exportJson() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
-        const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", `Salary_Backup_${currentYear}.json`);
-        document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove();
-    }
-
-    function importData(input) {
-        const file = input.files[0]; if (!file) return;
-        const reader = new FileReader(); reader.onload = function(e) {
-            try { const raw = JSON.parse(e.target.result); if (typeof raw === 'object') { appData = raw; saveData(); alert("匯入成功！"); location.reload(); } else { alert("格式錯誤"); }
-            } catch (err) { alert("檔案損毀"); }
-        }; reader.readAsText(file);
-    }
-</script>
-</body>
-</html>
+            const base = parseFloat(d?.base)||0; const job
