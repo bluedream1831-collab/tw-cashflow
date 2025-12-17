@@ -15,6 +15,8 @@
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         .input-money { font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-weight: bold; }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        #helpSection { transition: max-height 0.3s ease-out, opacity 0.3s ease-out; max-height: 0; opacity: 0; overflow: hidden; }
+        #helpSection.open { max-height: 2000px; opacity: 1; }
     </style>
 </head>
 <body class="text-gray-700 pb-32">
@@ -40,7 +42,6 @@
                 <button onclick="switchTab('calculator')" id="btn-tab-calc" class="flex-1 text-center py-2 text-sm font-bold tab-active transition active:bg-gray-50 rounded-t-lg"><i class="fas fa-pen mr-1"></i>當月試算</button>
                 <button onclick="switchTab('report')" id="btn-tab-rep" class="flex-1 text-center py-2 text-sm font-bold text-gray-500 transition active:bg-gray-50 rounded-t-lg"><i class="fas fa-chart-pie mr-1"></i>年度報表</button>
             </div>
-            
             <a href="https://vocus.cc/salon/WUCJ" target="_blank" class="ml-2 text-orange-600 border border-orange-200 bg-orange-50 px-3 py-1.5 rounded-full text-xs font-bold flex items-center shadow-sm active:scale-95 transition">
                 <i class="fas fa-rss"></i> <span class="hidden md:inline ml-1">WUCJ 沙龍</span>
             </a>
@@ -53,8 +54,11 @@
     <div id="view-calculator">
         
         <div class="flex gap-2 mb-4 overflow-x-auto pb-2 no-scrollbar">
+            <button onclick="toggleHelp()" class="whitespace-nowrap bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-bold active:bg-blue-200 transition">
+                <i class="fas fa-book-open mr-1"></i> 欄位說明
+            </button>
             <button onclick="copySettingsToAll()" class="whitespace-nowrap bg-purple-100 text-purple-700 px-4 py-2 rounded-lg text-sm font-bold active:bg-purple-200 transition">
-                <i class="fas fa-clone mr-1"></i> 套用整年(不含獎金)
+                <i class="fas fa-clone mr-1"></i> 套用整年
             </button>
             <button onclick="toggleLock()" id="lockBtn" class="whitespace-nowrap bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-bold active:bg-gray-100 transition">
                 <i class="fas fa-unlock mr-1"></i> 鎖定
@@ -64,9 +68,41 @@
             </button>
         </div>
 
+        <div id="helpSection" class="mb-4 bg-blue-50 rounded-xl border border-blue-200 shadow-inner">
+            <div class="p-4 text-sm text-gray-700 space-y-4">
+                <div>
+                    <h4 class="font-bold text-blue-700 flex items-center"><i class="fas fa-info-circle mr-2"></i>關於時薪計算</h4>
+                    <p class="mt-1">勞基法規定，加班費計算基準為「平日每小時工資額」。公式為：<br><span class="font-mono bg-white px-1 rounded">(本俸 + 職務津貼 + 伙食津貼) ÷ 240</span>。</p>
+                </div>
+                <hr class="border-blue-200">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <h4 class="font-bold text-gray-800">💰 收入項目定義</h4>
+                        <ul class="list-disc list-inside mt-1 space-y-1 text-xs">
+                            <li><span class="font-bold text-blue-600">本俸/津貼</span>：固定月薪，會影響加班費高低。</li>
+                            <li><span class="font-bold text-yellow-600">大額獎金</span>：如年終、分紅。屬非經常性給與，<span class="text-red-500">不計入時薪</span>。</li>
+                            <li><span class="font-bold text-purple-600">被動收入</span>：股利或副業，僅供紀錄總資產，與公司薪資無關。</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-gray-800">💸 扣款項目定義</h4>
+                        <ul class="list-disc list-inside mt-1 space-y-1 text-xs">
+                            <li><span class="font-bold">勞退自付</span>：可自願提繳 1%~6%，此金額不計入年度所得稅(節稅)。</li>
+                            <li><span class="font-bold">獎金扣稅</span>：大額獎金超過 $88,501 需預扣 5% 所得稅，或超過投保金額4倍需扣 2.11% 二代健保。</li>
+                            <li><span class="font-bold">福利儲蓄</span>：如公司持股信託或強迫儲蓄。</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="bg-white p-2 rounded border border-blue-100 mt-2">
+                    <h4 class="font-bold text-orange-600 text-xs">⚠ 特殊工時：天災/颱風</h4>
+                    <p class="text-xs mt-1">若颱風天出勤，通常不計入每月46小時加班上限。建議選擇「天災/颱風」類型，系統會將時數獨立統計。</p>
+                </div>
+                <button onclick="toggleHelp()" class="w-full text-center text-blue-500 text-xs mt-2 underline">收起說明</button>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6" id="inputArea">
             
-            <!-- A區: 收入設定 -->
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                 <h3 class="font-bold text-gray-800 mb-4 flex items-center border-b pb-2">
                     <span class="bg-blue-100 text-blue-600 p-1.5 rounded-md mr-2"><i class="fas fa-wallet"></i></span>
@@ -88,7 +124,6 @@
                     </div>
                     <hr class="border-dashed">
                     
-                    <!-- 💰 新增：大額獎金 -->
                     <div class="flex justify-between items-center bg-yellow-50 p-2 -mx-2 rounded-lg border border-yellow-100">
                         <div class="flex flex-col">
                             <label class="text-sm font-bold text-yellow-700">大額獎金/分紅</label>
@@ -102,7 +137,6 @@
                         <input type="number" id="bonus" inputmode="decimal" class="input-money border border-gray-300 rounded-lg p-2 w-32 text-right text-lg focus:ring-2 ring-yellow-400 outline-none" placeholder="0" oninput="calculate()">
                     </div>
                     
-                    <!-- 被動收入 -->
                     <div class="flex justify-between items-center bg-purple-50 p-2 -mx-2 rounded-lg border border-purple-100">
                         <div class="flex flex-col">
                             <label class="text-sm font-bold text-purple-700">被動/斜槓收入</label>
@@ -111,7 +145,6 @@
                         <input type="number" id="passiveIncome" inputmode="decimal" class="input-money border border-purple-200 bg-white rounded-lg p-2 w-32 text-right text-lg focus:ring-2 ring-purple-400 outline-none text-purple-700" placeholder="0" oninput="calculate()">
                     </div>
                     
-                    <!-- 時薪顯示 -->
                     <div class="bg-slate-50 p-3 rounded-lg flex justify-between items-center border border-slate-100">
                         <span class="text-xs text-slate-500">平日時薪估算</span>
                         <span id="hourlyRateDisplay" class="font-bold font-mono text-xl text-slate-700">0</span>
@@ -134,12 +167,12 @@
                         <label class="text-sm font-medium text-gray-600">健保自付</label>
                         <input type="number" id="deductHealth" inputmode="decimal" class="input-money border border-gray-300 rounded-lg p-2 w-32 text-right text-red-600 text-lg focus:ring-2 ring-red-300 outline-none" placeholder="0" oninput="calculate()">
                     </div>
+                    <!-- ✨ 文字已更新：自提範圍 -->
                     <div class="flex justify-between items-center">
-                        <label class="text-sm font-medium text-gray-600">勞退自付(6%)</label>
+                        <label class="text-sm font-medium text-gray-600">勞退自付 (自提)</label>
                         <input type="number" id="deductPension" inputmode="decimal" class="input-money border border-gray-300 rounded-lg p-2 w-32 text-right text-red-600 text-lg focus:ring-2 ring-red-300 outline-none" placeholder="0" oninput="calculate()">
                     </div>
                     
-                    <!-- 💸 新增：獎金扣稅 -->
                     <div class="flex justify-between items-center bg-red-50 p-2 -mx-2 rounded-lg border border-red-100">
                         <div class="flex flex-col">
                             <label class="text-sm font-bold text-red-700">獎金獨立扣稅</label>
@@ -164,7 +197,6 @@
             </div>
         </div>
 
-        <!-- C區: 加班紀錄 -->
         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-8">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="font-bold text-gray-800 flex items-center">
@@ -207,7 +239,6 @@
             </div>
         </div>
 
-        <!-- D區: 底部結算 Bar -->
         <div class="fixed bottom-0 left-0 w-full bg-slate-900/95 backdrop-blur text-white shadow-[0_-4px_15px_rgba(0,0,0,0.3)] z-40 pb-safe rounded-t-2xl md:rounded-none">
             <div class="max-w-5xl mx-auto p-4 flex flex-row justify-between items-center">
                 <div class="flex flex-col">
@@ -229,7 +260,6 @@
         </div>
     </div>
 
-    <!-- ================= 頁面 2: 年度報表 ================= -->
     <div id="view-report" class="hidden">
         
         <div class="grid grid-cols-2 md:flex md:justify-end gap-3 mb-6">
@@ -312,16 +342,14 @@
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth() + 1;
     let isLocked = false;
-    const STORAGE_KEY = 'salary_pro_v6_bonus'; // 更新Key
+    const STORAGE_KEY = 'salary_pro_v6_bonus'; 
     let appData = {};
 
     window.onload = function() {
         const select = document.getElementById('monthSelect');
         for(let i=1; i<=12; i++) {
             let opt = document.createElement('option');
-            opt.value = i;
-            opt.text = i + "月";
-            select.appendChild(opt);
+            opt.value = i; opt.text = i + "月"; select.appendChild(opt);
         }
         document.getElementById('yearSelect').value = currentYear;
         select.value = currentMonth;
@@ -343,11 +371,9 @@
         if (!appData[y][m]) {
             appData[y][m] = {
                 base: '', jobAllowance: '', mealAllowance: '', 
-                bonus: '', largeBonus: '', // ✨ 大額獎金
-                passiveIncome: '', 
+                bonus: '', largeBonus: '', passiveIncome: '', 
                 deductLabor: '', deductHealth: '', deductPension: '', 
-                deductBonusTax: '', // ✨ 獎金扣稅
-                deductSavings: '', deductOther: '',
+                deductBonusTax: '', deductSavings: '', deductOther: '',
                 overtime: []
             };
         }
@@ -374,19 +400,23 @@
         }
     }
 
+    function toggleHelp() {
+        document.getElementById('helpSection').classList.toggle('open');
+    }
+
     function loadMonthUI() {
         const data = getMonthData(currentYear, currentMonth);
         document.getElementById('baseSalary').value = data.base;
         document.getElementById('jobAllowance').value = data.jobAllowance || ''; 
         document.getElementById('mealAllowance').value = data.mealAllowance || '';
-        document.getElementById('largeBonus').value = data.largeBonus || ''; // ✨
+        document.getElementById('largeBonus').value = data.largeBonus || ''; 
         document.getElementById('bonus').value = data.bonus;
         document.getElementById('passiveIncome').value = data.passiveIncome || ''; 
         
         document.getElementById('deductLabor').value = data.deductLabor;
         document.getElementById('deductHealth').value = data.deductHealth;
         document.getElementById('deductPension').value = data.deductPension || '';
-        document.getElementById('deductBonusTax').value = data.deductBonusTax || ''; // ✨
+        document.getElementById('deductBonusTax').value = data.deductBonusTax || ''; 
         document.getElementById('deductSavings').value = data.deductSavings || ''; 
         document.getElementById('deductOther').value = data.deductOther;
         
@@ -398,7 +428,7 @@
         const base = parseFloat(document.getElementById('baseSalary').value) || 0;
         const job = parseFloat(document.getElementById('jobAllowance').value) || 0;
         const meal = parseFloat(document.getElementById('mealAllowance').value) || 0;
-        const largeBonus = parseFloat(document.getElementById('largeBonus').value) || 0; // ✨
+        const largeBonus = parseFloat(document.getElementById('largeBonus').value) || 0; 
         const bonus = parseFloat(document.getElementById('bonus').value) || 0;
         const passive = parseFloat(document.getElementById('passiveIncome').value) || 0; 
         
@@ -446,14 +476,14 @@
         const dLabor = parseFloat(document.getElementById('deductLabor').value) || 0;
         const dHealth = parseFloat(document.getElementById('deductHealth').value) || 0;
         const dPension = parseFloat(document.getElementById('deductPension').value) || 0; 
-        const dBonusTax = parseFloat(document.getElementById('deductBonusTax').value) || 0; // ✨
+        const dBonusTax = parseFloat(document.getElementById('deductBonusTax').value) || 0; 
         const dSavings = parseFloat(document.getElementById('deductSavings').value) || 0;
         const dOther = parseFloat(document.getElementById('deductOther').value) || 0;
         const totalDeduct = dLabor + dHealth + dPension + dBonusTax + dSavings + dOther;
         
         document.getElementById('displayDeductTotal').innerText = totalDeduct.toLocaleString();
 
-        const totalGross = regularWage + bonus + largeBonus + totalOtPay; // 含大額獎金
+        const totalGross = regularWage + bonus + largeBonus + totalOtPay; 
         const netPay = totalGross + passive - totalDeduct; 
 
         document.getElementById('totalGross').innerText = '$' + Math.round(totalGross).toLocaleString();
@@ -464,13 +494,13 @@
             data.base = document.getElementById('baseSalary').value;
             data.jobAllowance = document.getElementById('jobAllowance').value;
             data.mealAllowance = document.getElementById('mealAllowance').value;
-            data.largeBonus = document.getElementById('largeBonus').value; // ✨
+            data.largeBonus = document.getElementById('largeBonus').value; 
             data.bonus = document.getElementById('bonus').value;
             data.passiveIncome = document.getElementById('passiveIncome').value; 
             data.deductLabor = document.getElementById('deductLabor').value;
             data.deductHealth = document.getElementById('deductHealth').value;
             data.deductPension = document.getElementById('deductPension').value; 
-            data.deductBonusTax = document.getElementById('deductBonusTax').value; // ✨
+            data.deductBonusTax = document.getElementById('deductBonusTax').value; 
             data.deductSavings = document.getElementById('deductSavings').value;
             data.deductOther = document.getElementById('deductOther').value;
             saveData();
@@ -509,7 +539,6 @@
             target.base = src.base; target.jobAllowance = src.jobAllowance; target.mealAllowance = src.mealAllowance;
             target.deductLabor = src.deductLabor; target.deductHealth = src.deductHealth; target.deductPension = src.deductPension;
             target.deductSavings = src.deductSavings; target.deductOther = src.deductOther; target.passiveIncome = src.passiveIncome;
-            // 不複製 largeBonus 和 deductBonusTax
         }
         saveData(); alert("複製完成！");
     }
